@@ -22,6 +22,7 @@
 #define MESSAGE_LENGTH 17
 #define MAX_NUM_MESSAGES 6
 #define MAX_NUM_COLORS 4
+#define MAX_NUM_SCALARS 4
 #define MAX_FUNCNAME_LEN 32
 
 // verbose output
@@ -38,23 +39,30 @@ typedef struct {
     uint8_t nBlue;
 } Color;
 
-typedef enum {Slow = 1, Medium, Fast} Speed;
-
 typedef struct {
     Color colors[MAX_NUM_COLORS];
-    Speed speed;
+    int scalars[MAX_NUM_SCALARS];
 } Arguments;
 
 typedef struct {
     int nMessages;
     uint8_t messages[MAX_NUM_MESSAGES][MESSAGE_LENGTH];
+    int setAndApply;
 } Messages;
+
+typedef struct {
+    const char *NAME;
+    const char *name;
+    int min;
+    int max;
+} ScalarDef;
 
 typedef struct {
     const char *szName;
     void (*function)(Arguments *args, Messages *outputs);
     int nColors;
-    int nSpeed;
+    int nScalars;
+    ScalarDef scalars[MAX_NUM_SCALARS];
 } FunctionRecord;
 
 // ------------------------------------------------------------
@@ -63,22 +71,25 @@ typedef struct {
 
 const uint8_t SPEED_BYTE_VALUES[] = {0xe1, 0xeb, 0xf5};
 
-uint8_t speedByteValue(Speed speed) {
+uint8_t speedByteValue(int speed) {
     return SPEED_BYTE_VALUES[speed - 1];
 }
 
-uint8_t MESSAGE_SET[] = {0x5d, 0xb5, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-uint8_t MESSAGE_APPLY[] = {0x5d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+const int BRIGHTNESS_OFFSET = 4;
+uint8_t MESSAGE_BRIGHTNESS[MESSAGE_LENGTH] = {0x5a, 0xba, 0xc5, 0xc4};
+uint8_t MESSAGE_SET[MESSAGE_LENGTH] = {0x5d, 0xb5};
+uint8_t MESSAGE_APPLY[MESSAGE_LENGTH] = {0x5d, 0xb4};
+uint8_t MESSAGE_INITIALIZE_KEYBOARD[MESSAGE_LENGTH] = {0x5a, 0x41, 0x53, 0x55, 0x53, 0x20, 0x54, 0x65, 0x63, 0x68, 0x2e, 0x49, 0x6e, 0x63, 0x2e, 0x00};
 
-void initMessage(uint8_t *msg) {
+void
+initMessage(uint8_t *msg) {
     memset(msg, 0, MESSAGE_LENGTH);
     msg[0] = 0x5d;
     msg[1] = 0xb3;
 }
 
-void single_static(Arguments *args, Messages *outputs) {
+void
+single_static(Arguments *args, Messages *outputs) {
     V(printf("single_static\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
@@ -88,7 +99,8 @@ void single_static(Arguments *args, Messages *outputs) {
     m[6] = args->colors[0].nBlue;
 }
 
-void single_breathing(Arguments *args, Messages *outputs) {
+void
+single_breathing(Arguments *args, Messages *outputs) {
     V(printf("single_breathing\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
@@ -97,24 +109,26 @@ void single_breathing(Arguments *args, Messages *outputs) {
     m[4] = args->colors[0].nRed;
     m[5] = args->colors[0].nGreen;
     m[6] = args->colors[0].nBlue;
-    m[7] = speedByteValue(args->speed);
+    m[7] = speedByteValue(args->scalars[0]);
     m[9] = 1;
     m[10] = args->colors[1].nRed;
     m[11] = args->colors[1].nGreen;
     m[12] = args->colors[1].nBlue;
 }
 
-void single_colorcycle(Arguments *args, Messages *outputs) {
+void
+single_colorcycle(Arguments *args, Messages *outputs) {
     V(printf("single_colorcycle\n"));
     outputs->nMessages = 1;
     uint8_t *m = outputs->messages[0];
     initMessage(m);
     m[3] = 2;
     m[4] = 0xff;
-    m[7] = speedByteValue(args->speed);
+    m[7] = speedByteValue(args->scalars[0]);
 }
 
-void multi_static(Arguments *args, Messages *outputs) {
+void
+multi_static(Arguments *args, Messages *outputs) {
     V(printf("multi_static\n"));
     outputs->nMessages = 4;
     for (int i = 0; i < 4; ++i) {
@@ -128,7 +142,8 @@ void multi_static(Arguments *args, Messages *outputs) {
     }
 }
 
-void multi_breathing(Arguments *args, Messages *outputs) {
+void
+multi_breathing(Arguments *args, Messages *outputs) {
     V(printf("multi_breathing\n"));
     outputs->nMessages = 4;
     for (int i = 0; i < 4; ++i) {
@@ -139,60 +154,92 @@ void multi_breathing(Arguments *args, Messages *outputs) {
         m[4] = args->colors[i].nRed;
         m[5] = args->colors[i].nGreen;
         m[6] = args->colors[i].nBlue;
-        m[7] = speedByteValue(args->speed);
+        m[7] = speedByteValue(args->scalars[0]);
     }
+}
+
+void
+set_brightness(Arguments *args, Messages *outputs) {
+    V(printf("single_static\n"));
+    memcpy(outputs->messages[0], MESSAGE_BRIGHTNESS, MESSAGE_LENGTH);
+    outputs->messages[0][BRIGHTNESS_OFFSET] = args->scalars[0];
+    outputs->nMessages = 1;
+    outputs->setAndApply = 0;
+}
+
+void initialize_keyboard(Arguments *args, Messages *outputs) {
+        V(printf("initialize_keyboard\n"));
+    memcpy(outputs->messages[0], MESSAGE_INITIALIZE_KEYBOARD, MESSAGE_LENGTH);
+    outputs->nMessages = 1;
+    outputs->setAndApply = 0;
 }
 
 const uint8_t RED[] = { 0xff, 0x00, 0x00 };
 const uint8_t GREEN[] = { 0x00, 0xff, 0x00 };
 const uint8_t BLUE[] = { 0x00, 0x00, 0xff };
 const uint8_t YELLOW[] = { 0xff, 0xff, 0x00 };
+const uint8_t GOLD[] = { 0xff, 0x8C, 0x00 };
 const uint8_t CYAN[] = { 0x00, 0xff, 0xff };
 const uint8_t MAGENTA[] = { 0xff, 0x00, 0xff };
 const uint8_t WHITE[] = { 0xff, 0xff, 0xff };
 const uint8_t BLACK[] = { 0x00, 0x00, 0x00 };
 
-void red(Arguments *args, Messages *messages) {
+void
+red(Arguments *args, Messages *messages) {
     memcpy(args->colors, RED, 3);
     single_static(args, messages);
 }
 
-void green(Arguments *args, Messages *messages) {
+void
+green(Arguments *args, Messages *messages) {
     memcpy(args->colors, GREEN, 3);
     single_static(args, messages);
 }
 
-void blue(Arguments *args, Messages *messages) {
+void
+blue(Arguments *args, Messages *messages) {
     memcpy(args->colors, BLUE, 3);
     single_static(args, messages);
 }
 
-void yellow(Arguments *args, Messages *messages) {
+void
+yellow(Arguments *args, Messages *messages) {
     memcpy(args->colors, YELLOW, 3);
     single_static(args, messages);
 }
 
-void cyan(Arguments *args, Messages *messages) {
+void
+gold(Arguments *args, Messages *messages) {
+    memcpy(args->colors, GOLD, 3);
+    single_static(args, messages);
+}
+
+void
+cyan(Arguments *args, Messages *messages) {
     memcpy(args->colors, CYAN, 3);
     single_static(args, messages);
 }
 
-void magenta(Arguments *args, Messages *messages) {
+void
+magenta(Arguments *args, Messages *messages) {
     memcpy(args->colors, MAGENTA, 3);
     single_static(args, messages);
 }
 
-void white(Arguments *args, Messages *messages) {
+void
+white(Arguments *args, Messages *messages) {
     memcpy(args->colors, WHITE, 3);
     single_static(args, messages);
 }
 
-void black(Arguments *args, Messages *messages) {
+void
+black(Arguments *args, Messages *messages) {
     memcpy(args->colors, BLACK, 3);
     single_static(args, messages);
 }
 
-void rainbow(Arguments *args, Messages *messages) {
+void
+rainbow(Arguments *args, Messages *messages) {
     memcpy(&(args->colors[0]), RED, 3);
     memcpy(&(args->colors[1]), YELLOW, 3);
     memcpy(&(args->colors[2]), CYAN, 3);
@@ -204,42 +251,45 @@ void rainbow(Arguments *args, Messages *messages) {
 //  Command line argument parsing
 // ------------------------------------------------------------
 
+#define SPEED { "SPEED", "speed", 1, 3 }
+#define BRIGHTNESS { "BRIGHTNESS", "brightness", 0, 3 }
+
 const FunctionRecord FUNCTION_RECORDS[] = {
     {"single_static", &single_static, 1, 0},
-    {"single_breathing", &single_breathing, 2, 1},
-    {"single_colorcycle", &single_colorcycle, 0, 1},
+    {"single_breathing", &single_breathing, 2, 1, {SPEED}},
+    {"single_colorcycle", &single_colorcycle, 0, 1, {SPEED}},
     {"multi_static", &multi_static, 4, 0},
-    {"multi_breathing", &multi_breathing, 4, 1},
+    {"multi_breathing", &multi_breathing, 4, 1, {SPEED}},
     {"red", &red, 0, 0},
     {"green", &green, 0, 0},
     {"blue", &blue, 0, 0},
     {"yellow", &yellow, 0, 0},
+    {"gold", &gold, 0, 0},
     {"cyan", &cyan, 0, 0},
     {"magenta", &magenta, 0, 0},
     {"white", &white, 0, 0},
     {"black", &black, 0, 0},
     {"rainbow", &rainbow, 0, 0},
+    {"brightness", &set_brightness, 0, 1, {BRIGHTNESS}},
+    {"initialize_keyboard", &initialize_keyboard, 0, 0},
 };
 
 const int NUM_FUNCTION_RECORDS = (int)(sizeof(FUNCTION_RECORDS) / sizeof(FUNCTION_RECORDS[0]));
 
-void usage() {
+void
+usage() {
     printf("macrogaura - RGB keyboard control for Asus ROG laptops\n");
-#ifdef MODULE_VERSION
-#define xStringify(a) Stringify(a)
-#define Stringify(a) #a
-    printf("Version %s\n\n", xStringify(MODULE_VERSION));
-#endif
-    printf("Copyright © 2019 Le Bao Hiep\n\n");
+    printf("(c) 2021 TSLARoadster\n\n");
     printf("Usage:\n");
-    printf("   macrogaura [-v] COMMAND ARGUMENTS\n\n");
+    printf("   macrogaura COMMAND ARGUMENTS\n\n");
     printf("COMMAND should be one of:\n");
     for (int i = 0; i < NUM_FUNCTION_RECORDS; ++i) {
         printf("   %s\n", FUNCTION_RECORDS[i].szName);
     }
 }
 
-int parseColor(char *arg, Color *pResult) {
+int
+parseColor(char *arg, Color *pResult) {
     V(printf("parse color %s\n", arg));
     uint32_t v = 0;
     if (strlen(arg) != 6) goto fail;
@@ -259,38 +309,42 @@ fail:
     return -1;
 }
 
-int parseSpeed(char *arg, Speed *pResult) {
+int
+parseScalar(char *arg, ScalarDef type, int *pResult) {
     V(printf("parse speed %s\n", arg));
     long nSpeed = strtol(arg, 0, 0);
-    if (errno == ERANGE || nSpeed < 1 || nSpeed > 3) {
-        fprintf(stderr, "Could not interpret speed parameter value %s\n", arg);
-        fprintf(stderr, "Please give this value as an integer: 1 (slow), 2 (medium), or 3 (fast).\n");
+    if (errno == ERANGE || nSpeed < type.min || nSpeed > type.max) {
+        fprintf(stderr, "Could not interpret %s parameter value %s\n"
+                "Please give this value as an integer from %d to %d.\n",
+                type.name, arg, type.min, type.max);
         return -1;
     }
-    *pResult = (Speed)nSpeed;
+    *pResult = nSpeed;
     return 0;
 }
 
-int parseArguments(int argc, char **argv, Messages *messages) {
+int
+parseArguments(int argc, char **argv, Messages *messages) {
     int                   nRetval;
     Arguments             args;
     int                   nArgs         = 0;
     const FunctionRecord *pDesiredFunc  = 0;
     int                   nColors       = 0;
-    
+    int                   nScalars      = 0;
+
     // check for command line options
     while ((nRetval = getopt(argc, argv, "v")) != -1) {
         switch (nRetval) {
-            case 'v':
-                verbose = 1;
-                break;
-            default: /* '?' */
-                usage();
-                return -1;
+        case 'v':
+            verbose = 1;
+            break;
+        default: /* '?' */
+            usage();
+            return -1;
         }
     }
     nArgs = argc - optind;
-    
+
     // identify the function the user has asked for
     if (nArgs > 0) {
         for (int i = 0; i < NUM_FUNCTION_RECORDS; ++i) {
@@ -305,28 +359,34 @@ int parseArguments(int argc, char **argv, Messages *messages) {
         return -1;
     }
     // check that the function signature is satisfied
-    if (nArgs != (1 + pDesiredFunc->nColors + pDesiredFunc->nSpeed)) {
+    if (nArgs != (1 + pDesiredFunc->nColors + pDesiredFunc->nScalars)) {
         usage();
         printf("\nFunction %s takes ", pDesiredFunc->szName);
         if (pDesiredFunc->nColors > 0) {
-            if (pDesiredFunc->nSpeed) {
+            if (pDesiredFunc->nScalars == 1) {
                 printf("%d color(s) and a speed", pDesiredFunc->nColors);
+            } else if (pDesiredFunc->nScalars) {
+                printf("%d color(s) and %d integers",
+                       pDesiredFunc->nColors, pDesiredFunc->nScalars);
             } else {
                 printf("%d color(s)", pDesiredFunc->nColors);
             }
         } else {
-            if (pDesiredFunc->nSpeed) {
-                printf("a speed");
+            if (pDesiredFunc->nScalars == 1) {
+                const ScalarDef *d = pDesiredFunc->scalars;
+                printf("a single integer from %d to %d", d->min, d->max);
+            } else if (pDesiredFunc->nScalars) {
+                printf("%d integers", pDesiredFunc->nScalars);
             } else {
                 printf("no arguments");
             }
         }
-        printf(":\n   macrogaura %s ", pDesiredFunc->szName);
+        printf(":\n   rogauracore %s ", pDesiredFunc->szName);
         for (int i = 0; i < pDesiredFunc->nColors; i++) {
             printf("COLOR%d ", i+1);
         }
-        if (pDesiredFunc->nSpeed) {
-            printf("SPEED");
+        for (int i = 0; i < pDesiredFunc->nScalars; i++) {
+            printf("%s ", pDesiredFunc->scalars[i].NAME);
         }
         printf("\n\nCOLOR argument(s) should be given as hex values like ff0000\n");
         printf("SPEED argument should be given as an integer: 1, 2, or 3\n");
@@ -338,16 +398,20 @@ int parseArguments(int argc, char **argv, Messages *messages) {
             nRetval = parseColor(argv[i], &(args.colors[nColors]));
             if (nRetval < 0) return -1;
             nColors++;
-        } else {
-            nRetval = parseSpeed(argv[i], &args.speed);
+        } else if (nScalars < pDesiredFunc->nScalars) {
+            nRetval = parseScalar(argv[i], pDesiredFunc->scalars[nScalars],
+                                  &(args.scalars[nScalars]));
             if (nRetval < 0) return -1;
+            nScalars++;
         }
     }
     V(printf("args:\n"));
     for (int i = 0; i < MAX_NUM_COLORS; ++i) {
         V(printf("color%d %d %d %d\n", i + 1, args.colors[i].nRed, args.colors[i].nGreen, args.colors[i].nBlue));
     }
-    V(printf("speed %d\n", args.speed));
+    for (int i = 0; i < pDesiredFunc->nScalars; ++i) {
+      V(printf("%s %d\n", pDesiredFunc->scalars[i].name, args.scalars[i]));
+    }
     // call the function the user wants
     pDesiredFunc->function(&args, messages);
     V(printf("constructed %d messages:\n", messages->nMessages));
@@ -489,9 +553,12 @@ exit:
 //  Main function
 // ------------------------------------------------------------
 
-int main(int argc, char **argv) {
+int
+main(int argc, char **argv) {
     Messages messages;
+    messages.setAndApply = 1;
     if (parseArguments(argc, argv, &messages) == 0) {
-        handleUsb(&messages);
+        return handleUsb(&messages);
     }
+    return -1;
 }
