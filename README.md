@@ -1,4 +1,4 @@
-# macrogaura - RGB keyboard control for Asus ROG laptops on 
+# macrogaura - RGB keyboard control for Asus ROG laptops on MacOS
 
 (c) 2021 TSLARoadster
 
