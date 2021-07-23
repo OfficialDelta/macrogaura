@@ -281,7 +281,7 @@ usage() {
     printf("macrogaura - RGB keyboard control for Asus ROG laptops\n");
     printf("(c) 2021 TSLARoadster\n\n");
     printf("Usage:\n");
-    printf("   macrogaura COMMAND ARGUMENTS\n\n");
+    printf("   macrogaura [-v] COMMAND ARGUMENTS\n\n");
     printf("COMMAND should be one of:\n");
     for (int i = 0; i < NUM_FUNCTION_RECORDS; ++i) {
         printf("   %s\n", FUNCTION_RECORDS[i].szName);

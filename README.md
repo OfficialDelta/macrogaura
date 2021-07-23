@@ -18,11 +18,14 @@ COMMAND should be one of:
    green
    blue
    yellow
+   gold
    cyan
    magenta
    white
    black
    rainbow
+   brightness
+   initialize_keyboard
 ```
 
 ## Building
@@ -36,3 +39,4 @@ sudo xcodebuild
 ## Credits
 - [Will Roberts](https://github.com/wroberts) for [rogauracore](https://github.com/wroberts/rogauracore) (based on which this program was developed)
 - [Le Bao Hiep](https://github.com/hieplpvip) for porting rogauracore to macOS
+- [TSLARoadster](https://github.com/TSLARoadster) for maintaining macrogaura
