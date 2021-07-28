@@ -286,6 +286,8 @@ usage() {
     for (int i = 0; i < NUM_FUNCTION_RECORDS; ++i) {
         printf("   %s\n", FUNCTION_RECORDS[i].szName);
     }
+    
+    exit(0);
 }
 
 int
