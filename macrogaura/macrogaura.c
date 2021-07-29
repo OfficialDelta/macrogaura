@@ -71,7 +71,8 @@ typedef struct {
 
 const uint8_t SPEED_BYTE_VALUES[] = {0xe1, 0xeb, 0xf5};
 
-uint8_t speedByteValue(int speed) {
+uint8_t
+speedByteValue(int speed) {
     return SPEED_BYTE_VALUES[speed - 1];
 }
 
@@ -167,7 +168,8 @@ set_brightness(Arguments *args, Messages *outputs) {
     outputs->setAndApply = 0;
 }
 
-void initialize_keyboard(Arguments *args, Messages *outputs) {
+void
+initialize_keyboard(Arguments *args, Messages *outputs) {
         V(printf("initialize_keyboard\n"));
     memcpy(outputs->messages[0], MESSAGE_INITIALIZE_KEYBOARD, MESSAGE_LENGTH);
     outputs->nMessages = 1;
@@ -277,7 +279,7 @@ const FunctionRecord FUNCTION_RECORDS[] = {
 const int NUM_FUNCTION_RECORDS = (int)(sizeof(FUNCTION_RECORDS) / sizeof(FUNCTION_RECORDS[0]));
 
 void
-usage() {
+usage(void) {
     printf("macrogaura - RGB keyboard control for Asus ROG laptops\n");
     printf("(c) 2021 TSLARoadster\n\n");
     printf("Usage:\n");
@@ -321,7 +323,7 @@ parseScalar(char *arg, ScalarDef type, int *pResult) {
                 type.name, arg, type.min, type.max);
         return -1;
     }
-    *pResult = nSpeed;
+    *pResult = (int)nSpeed;
     return 0;
 }
 
@@ -432,7 +434,8 @@ parseArguments(int argc, char **argv, Messages *messages) {
 //  IOHIDDevice interface
 // ------------------------------------------------------------
 
-static int32_t get_int_property(IOHIDDeviceRef device, CFStringRef key) {
+static int32_t
+get_int_property(IOHIDDeviceRef device, CFStringRef key) {
     CFTypeRef ref;
     int32_t value;
     
@@ -446,7 +449,8 @@ static int32_t get_int_property(IOHIDDeviceRef device, CFStringRef key) {
     return 0;
 }
 
-static int get_string_property(IOHIDDeviceRef device, CFStringRef prop, wchar_t *buf, size_t len) {
+static int
+get_string_property(IOHIDDeviceRef device, CFStringRef prop, wchar_t *buf, size_t len) {
     CFStringRef str;
     
     if (!len)
@@ -491,7 +495,8 @@ const uint16_t ASUS_VENDOR_ID = 0x0b05;
 const uint16_t ASUS_PRODUCT_IDS[] = { 0x1854, 0x1869, 0x1866 };
 const int NUM_ASUS_PRODUCTS = (int)(sizeof(ASUS_PRODUCT_IDS) / sizeof(ASUS_PRODUCT_IDS[0]));
 
-int handleUsb(Messages *pMessages) {
+int
+handleUsb(Messages *pMessages) {
     IOHIDManagerRef tIOHIDManagerRef = NULL;
     IOHIDDeviceRef *tIOHIDDeviceRefs = NULL;
     CFSetRef deviceCFSetRef= NULL;
