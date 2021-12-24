@@ -1,21 +1,3 @@
-/**
- * macrogaura
- * Copyright © 2019 Le Bao Hiep. All rights reserved.
- *
- * Author:        Le Bao Hiep <baohiep2013@gmail.com>
- * Creation Date: 20 July 2019
- *
- * Description:
- *    RGB keyboard control for Asus ROG laptops
- *
- * Revision Information:
- *
- *    20 July 2019
- *       - First version
- *
- * \file macrogaura.c
- */
-
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/hid/IOHIDLib.h>
 
